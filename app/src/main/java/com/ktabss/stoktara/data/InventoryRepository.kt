@@ -15,6 +15,10 @@ interface InventoryRepository {
     val businessName: StateFlow<String>
     val currentProfile: StateFlow<Profile>
     val categories: StateFlow<List<CategoryTag>>
+    val profiles: StateFlow<List<Profile>>
+
+    /** Who is "touching" the stock right now; audit entries are attributed to this profile. */
+    fun switchProfile(profileId: Long)
 
     val items: StateFlow<List<Item>>
 

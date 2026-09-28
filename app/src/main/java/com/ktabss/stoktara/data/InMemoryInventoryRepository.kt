@@ -15,6 +15,7 @@ class InMemoryInventoryRepository : InventoryRepository {
 
     private val _businessName = MutableStateFlow("Nena\u2019s Bakery & Supplies")
     private val _currentProfile = MutableStateFlow(nena)
+    private val _profiles = MutableStateFlow(listOf(nena, jun))
     private val _categories = MutableStateFlow(
         listOf(
             CategoryTag(1, "Baking Staples"),
@@ -28,11 +29,16 @@ class InMemoryInventoryRepository : InventoryRepository {
 
     override val businessName: StateFlow<String> = _businessName.asStateFlow()
     override val currentProfile: StateFlow<Profile> = _currentProfile.asStateFlow()
+    override val profiles: StateFlow<List<Profile>> = _profiles.asStateFlow()
     override val categories: StateFlow<List<CategoryTag>> = _categories.asStateFlow()
     override val items: StateFlow<List<Item>> = _items.asStateFlow()
     override val auditLog: StateFlow<List<AuditLog>> = _auditLog.asStateFlow()
 
     init { seed() }
+
+    override fun switchProfile(profileId: Long) {
+        _profiles.value.firstOrNull { it.id == profileId }?.let { _currentProfile.value = it }
+    }
 
     override fun findItem(id: Long): Item? = _items.value.firstOrNull { it.id == id }
 
