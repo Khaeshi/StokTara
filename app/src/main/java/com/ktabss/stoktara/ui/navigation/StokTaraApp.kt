@@ -32,6 +32,10 @@ import com.ktabss.stoktara.ui.activity.ActivityScreen
 import com.ktabss.stoktara.ui.alerts.AlertsScreen
 import com.ktabss.stoktara.ui.home.HomeScreen
 import com.ktabss.stoktara.ui.intro.IntroScreen
+import com.ktabss.stoktara.ui.inventory.InventoryScreen
+import com.ktabss.stoktara.ui.scan.BarcodeMatchedScreen
+import com.ktabss.stoktara.ui.scan.ScanBg
+import com.ktabss.stoktara.ui.scan.ScanScreen
 import com.ktabss.stoktara.ui.placeholder.PlaceholderScreen
 import com.ktabss.stoktara.ui.theme.InkSoft
 import com.ktabss.stoktara.ui.theme.Line
@@ -67,7 +71,11 @@ fun StokTaraApp() {
     val onIntro = route == null || route == Routes.INTRO
 
     Scaffold(
-        containerColor = if (onIntro) Primary else Paper,
+        containerColor = when {
+            onIntro -> Primary
+            route == Routes.SCAN -> ScanBg // dark viewfinder screen, so the status-bar strip matches
+            else -> Paper
+        },
         bottomBar = {
             if (route in BottomBarRoutes) StokBottomBar(highlightedTab(route)) { nav.goToTab(it) }
         },
@@ -97,12 +105,31 @@ fun StokTaraApp() {
             composable(Routes.ACTIVITY) { ActivityScreen(onBack = { nav.popBackStack() }) }
 
             // ---- Placeholders: replace the body with the Figma UI, keep the route ----
+            // ---- Member 3 (done) ----
             composable(Routes.INVENTORY) {
-                PlaceholderScreen("Inventory", "Member 3", "Item list with search + category/status filters. Tapping a card opens Quick Stock; the + opens Add Item (Routes.ADD_ITEM); edit opens Routes.editItem(id).")
+                InventoryScreen(
+                    onAddItem = { nav.navigate(Routes.ADD_ITEM) },
+                    onEditItem = { id -> nav.navigate(Routes.editItem(id)) },
+                )
             }
             composable(Routes.SCAN) {
-                PlaceholderScreen("Scan Barcode", "Member 3", "Viewfinder -> matched item -> stock update via repository.recordStockChange().", onBack = { nav.popBackStack() })
+                ScanScreen(
+                    onBack = { nav.popBackStack() },
+                    onMatched = { id -> nav.navigate(Routes.scanMatched(id)) },
+                )
             }
+            composable(
+                Routes.SCAN_MATCHED,
+                arguments = listOf(navArgument("itemId") { type = NavType.LongType }),
+            ) { entry ->
+                BarcodeMatchedScreen(
+                    itemId = entry.arguments?.getLong("itemId") ?: -1L,
+                    onBack = { nav.popBackStack() }, // back to the viewfinder, ready for the next scan
+                    onEditDetails = { id -> nav.navigate(Routes.editItem(id)) },
+                )
+            }
+
+            // ---- Placeholders: replace the body with the Figma UI, keep the route ----
             composable(Routes.SETTINGS) {
                 PlaceholderScreen("Business Profile", "Member 1", "Owner: business name, category tags, staff, change password. Staff: own nickname + password only.", onBack = { nav.popBackStack() })
             }
