@@ -74,6 +74,18 @@ fun IntroScreen(onContinue: () -> Unit, viewModel: IntroViewModel = viewModel())
     val profiles by viewModel.profiles.collectAsStateWithLifecycle()
     var showSwitcher by rememberSaveable { mutableStateOf(false) }
 
+    // First-run onboarding check: If no profiles exist, show the setup screen.
+    // NOTE: Currently evaluates to false during local development because mock profiles (e.g. Nena)
+    // Once mock data is removed or cleared, this triggers automatically on brand new installs
+    if (profiles.isEmpty()) {
+        BusinessSetupScreen(
+            onSetupComplete = { businessName, ownerName, pin ->
+                onContinue()
+            }
+        )
+        return
+    }
+
     LightSystemBarIcons() // green background needs white status/nav icons
 
     Column(Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
