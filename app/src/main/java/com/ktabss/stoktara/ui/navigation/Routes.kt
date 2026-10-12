@@ -11,7 +11,12 @@ object Routes {
     const val SETTINGS = "settings"          // Business Profile (owner) / Your Profile (staff)
     const val ADD_ITEM = "item/add"
     const val EDIT_ITEM = "item/edit/{itemId}"
+    const val EDIT_ITEM_DETAILS = "item/edit/details/{itemId}"
+
+    const val SCAN_BARCODE = "item/scan_barcode"
+    const val CAPTURE_PHOTO = "item/capture_photo"
 
     fun editItem(itemId: Long) = "item/edit/$itemId"
+    fun editItemDetails(itemId: Long) = "item/edit/details/$itemId"
     fun scanMatched(itemId: Long) = "scan/matched/$itemId"
 }

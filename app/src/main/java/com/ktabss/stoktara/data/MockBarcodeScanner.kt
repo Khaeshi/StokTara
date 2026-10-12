@@ -21,7 +21,7 @@ object MockBarcodeScanner {
     )
 
     private val codes = barcodeToSku.keys.sorted()
-    private var cursor = 0
+    private var cursor = 9
 
     /** Pretend the camera just read a barcode; cycles through the mock codes. */
     fun nextCode(): String = codes[cursor++ % codes.size]

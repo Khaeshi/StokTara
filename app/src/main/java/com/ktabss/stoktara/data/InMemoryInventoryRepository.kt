@@ -72,6 +72,10 @@ class InMemoryInventoryRepository : InventoryRepository {
         return updated
     }
 
+    override suspend fun getItem(itemId: Long): Item? {
+        return _items.value.find { it.id == itemId }
+    }
+
     override suspend fun deleteItem(id: Long, actor: Profile): Boolean {
         val item = findItem(id) ?: return false
         _items.update { list -> list.filterNot { it.id == id } }

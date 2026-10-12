@@ -72,17 +72,28 @@ class StockEditViewModel(private val repo: InventoryRepository = AppGraph.reposi
 
 /** Filled green button used for Save Item / Scan. */
 @Composable
-fun StokButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+fun StokButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    containerColor: Color = Primary,
+    textColor: Color = Color.White,
+) {
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(if (enabled) Primary else Primary.copy(alpha = 0.4f))
+            .background(if (enabled) containerColor else containerColor.copy(alpha = 0.4f))
             .clickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = Color.White)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = textColor
+        )
     }
 }
 

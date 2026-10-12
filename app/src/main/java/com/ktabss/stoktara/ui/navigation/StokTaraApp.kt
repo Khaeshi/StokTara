@@ -21,6 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -28,11 +30,15 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.ktabss.stoktara.data.AppGraph.repository
 import com.ktabss.stoktara.ui.activity.ActivityScreen
 import com.ktabss.stoktara.ui.alerts.AlertsScreen
 import com.ktabss.stoktara.ui.home.HomeScreen
 import com.ktabss.stoktara.ui.intro.IntroScreen
 import com.ktabss.stoktara.ui.inventory.InventoryScreen
+import com.ktabss.stoktara.ui.itemforms.AddItemScreen
+import com.ktabss.stoktara.ui.itemforms.EditItemScreen
+import com.ktabss.stoktara.ui.itemforms.EditItemViewModel
 import com.ktabss.stoktara.ui.scan.BarcodeMatchedScreen
 import com.ktabss.stoktara.ui.scan.ScanBg
 import com.ktabss.stoktara.ui.scan.ScanScreen
@@ -41,6 +47,12 @@ import com.ktabss.stoktara.ui.theme.InkSoft
 import com.ktabss.stoktara.ui.theme.Line
 import com.ktabss.stoktara.ui.theme.Paper
 import com.ktabss.stoktara.ui.theme.Primary
+import androidx.lifecycle.ViewModel
+import androidx.navigation.NavBackStackEntry
+import com.ktabss.stoktara.data.InventoryRepository
+import com.ktabss.stoktara.ui.itemforms.AddItemViewModel
+import com.ktabss.stoktara.ui.itemforms.ItemPhotoScreen
+import com.ktabss.stoktara.ui.itemforms.ItemScanScreen
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
@@ -133,17 +145,89 @@ fun StokTaraApp() {
             composable(Routes.SETTINGS) {
                 PlaceholderScreen("Business Profile", "Member 1", "Owner: business name, category tags, staff, change password. Staff: own nickname + password only.", onBack = { nav.popBackStack() })
             }
-            composable(Routes.ADD_ITEM) {
-                PlaceholderScreen("Add Item", "Member 2", "Add Item modal: form + photo + barcode capture. Saves through repository.addItem().", onBack = { nav.popBackStack() })
+            composable(Routes.ADD_ITEM) { entry ->
+                val viewModel: AddItemViewModel = viewModel()
+
+                val scannedSku = entry.savedStateHandle.get<String>("scanned_sku")
+                if (scannedSku != null) {
+                    viewModel.setSku(scannedSku)
+                    entry.savedStateHandle.remove<String>("scanned_sku")
+                }
+
+                val capturedPhoto = entry.savedStateHandle.get<String>("captured_photo")
+                if (capturedPhoto != null) {
+                    viewModel.setPhotoUri(capturedPhoto)
+                    entry.savedStateHandle.remove<String>("captured_photo")
+                }
+
+                AddItemScreen(
+                    onBack = { nav.popBackStack() },
+                    onScanClick = { nav.navigate(Routes.SCAN_BARCODE) },
+                    onPhotoClick = { nav.navigate(Routes.CAPTURE_PHOTO) },
+                    viewModel = viewModel
+                )
             }
+
             composable(
                 Routes.EDIT_ITEM,
                 arguments = listOf(navArgument("itemId") { type = NavType.LongType }),
             ) { entry ->
-                val id = entry.arguments?.getLong("itemId")
-                PlaceholderScreen("Edit Item", "Member 2", "Edit Item modal for item #$id. Saves through repository.updateItem(); delete through deleteItem().", onBack = { nav.popBackStack() })
+                val viewModel: EditItemViewModel = viewModel(
+                    factory = EditItemViewModelFactory(repository, entry)
+                )
+
+                val scannedSku = entry.savedStateHandle.get<String>("scanned_sku")
+                if (scannedSku != null) {
+                    viewModel.setScannedSku(scannedSku)
+                    entry.savedStateHandle.remove<String>("scanned_sku")
+                }
+
+                val capturedPhoto = entry.savedStateHandle.get<String>("captured_photo")
+                if (capturedPhoto != null) {
+                    viewModel.setCapturedPhoto(capturedPhoto)
+                    entry.savedStateHandle.remove<String>("captured_photo")
+                }
+
+                EditItemScreen(
+                    viewModel = viewModel,
+                    onBack = { nav.popBackStack() },
+                    onScanClick = { nav.navigate(Routes.SCAN_BARCODE) },
+                    onPhotoClick = { nav.navigate(Routes.CAPTURE_PHOTO) }
+                )
+            }
+
+            composable(Routes.SCAN_BARCODE) {
+                ItemScanScreen(
+                    onBack = { nav.popBackStack() },
+                    onSkuScanned = { scannedSku ->
+                        nav.previousBackStackEntry?.savedStateHandle?.set("scanned_sku", scannedSku)
+                    }
+                )
+            }
+
+            composable(Routes.CAPTURE_PHOTO) {
+                ItemPhotoScreen(
+                    onBack = { nav.popBackStack() },
+                    onPhotoCaptured = { photoUri ->
+                        nav.previousBackStackEntry?.savedStateHandle?.set(
+                            "captured_photo",
+                            photoUri
+                        )
+                    }
+                )
             }
         }
+    }
+}
+
+class EditItemViewModelFactory(
+    private val repository: InventoryRepository,
+    private val entry: NavBackStackEntry
+) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        val itemId = entry.arguments?.getLong("itemId") ?: 0L
+        return EditItemViewModel(itemId, repository) as T
     }
 }
 

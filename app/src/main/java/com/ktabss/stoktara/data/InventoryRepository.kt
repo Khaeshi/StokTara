@@ -46,4 +46,5 @@ interface InventoryRepository {
      * Returns the updated item, or null if the id doesn't exist.
      */
     suspend fun recordStockChange(itemId: Long, delta: Double, actor: Profile): Item?
+    suspend fun getItem(itemId: Long): Item?
 }
