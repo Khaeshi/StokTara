@@ -2,7 +2,12 @@ package com.ktabss.stoktara.data
 
 enum class Role(val label: String) { OWNER("Owner"), STAFF("Staff") }
 
-data class Profile(val id: Long, val nickname: String, val role: Role)
+data class Profile(
+    val id: Long,
+    val nickname: String,
+    val role: Role,
+    val password: String = ""
+)
 
 data class CategoryTag(val id: Long, val label: String)
 

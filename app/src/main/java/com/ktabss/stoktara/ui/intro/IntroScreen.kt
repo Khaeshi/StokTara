@@ -18,12 +18,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +42,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -58,7 +65,13 @@ import kotlinx.coroutines.flow.StateFlow
 class IntroViewModel(private val repo: InventoryRepository = AppGraph.repository) : ViewModel() {
     val currentProfile: StateFlow<Profile> = repo.currentProfile
     val profiles: StateFlow<List<Profile>> = repo.profiles
+
     fun switchTo(profileId: Long) = repo.switchProfile(profileId)
+
+    fun completeOnboarding(businessName: String, ownerName: String, pin: String) {
+        repo.setBusinessName(businessName)
+        repo.createOwnerProfile(ownerName, pin)
+    }
 }
 
 // The Figma uses a proportional grotesque here (looks like Space Grotesk); system sans is the stand-in.
@@ -74,12 +87,16 @@ fun IntroScreen(onContinue: () -> Unit, viewModel: IntroViewModel = viewModel())
     val profiles by viewModel.profiles.collectAsStateWithLifecycle()
     var showSwitcher by rememberSaveable { mutableStateOf(false) }
 
+    // PIN Authentication Dialog States
+    var pendingProfile by rememberSaveable { mutableStateOf<Profile?>(null) }
+    var enteredPin by rememberSaveable { mutableStateOf("") }
+    var pinError by rememberSaveable { mutableStateOf(false) }
+
     // First-run onboarding check: If no profiles exist, show the setup screen.
-    // NOTE: Currently evaluates to false during local development because mock profiles (e.g. Nena)
-    // Once mock data is removed or cleared, this triggers automatically on brand new installs
     if (profiles.isEmpty()) {
         BusinessSetupScreen(
             onSetupComplete = { businessName, ownerName, pin ->
+                viewModel.completeOnboarding(businessName, ownerName, pin)
                 onContinue()
             }
         )
@@ -101,7 +118,7 @@ fun IntroScreen(onContinue: () -> Unit, viewModel: IntroViewModel = viewModel())
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("StokTara", fontFamily = IntroFont, fontWeight = FontWeight.Bold, fontSize = 34.sp, color = Color.White)
             Text(
-                "Simple stock counting for small shops. Track what\u2019s in, what\u2019s out, and who touched it.",
+                "Simple stock counting for small shops. Track what’s in, what’s out, and who touched it.",
                 fontFamily = IntroFont, fontSize = 14.sp, lineHeight = 20.sp, color = Color.White.copy(alpha = 0.85f),
             )
         }
@@ -111,12 +128,16 @@ fun IntroScreen(onContinue: () -> Unit, viewModel: IntroViewModel = viewModel())
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
                 .background(Placeholder)
-                .clickable(onClick = onContinue)
+                .clickable {
+                    pendingProfile = profile
+                    enteredPin = ""
+                    pinError = false
+                }
                 .padding(vertical = 16.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                "Continue as ${profile.nickname} - ${profile.role.label}",
+                "Continue as ${profile.nickname} (${profile.role.label})",
                 fontFamily = IntroFont, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = Primary,
             )
         }
@@ -128,12 +149,81 @@ fun IntroScreen(onContinue: () -> Unit, viewModel: IntroViewModel = viewModel())
         Spacer(Modifier.height(16.dp))
     }
 
+    // Switch Profiles Modal
     if (showSwitcher) {
         SwitchProfilesDialog(
             profiles = profiles,
             currentId = profile.id,
-            onPick = { viewModel.switchTo(it.id); showSwitcher = false },
+            onPick = { selected ->
+                showSwitcher = false
+                pendingProfile = selected
+                enteredPin = ""
+                pinError = false
+            },
             onDismiss = { showSwitcher = false },
+        )
+    }
+
+    // PIN Authentication Dialog
+    pendingProfile?.let { targetProfile ->
+        AlertDialog(
+            onDismissRequest = {
+                pendingProfile = null
+                enteredPin = ""
+                pinError = false
+            },
+            title = { Text("Enter PIN for ${targetProfile.nickname}") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = enteredPin,
+                        onValueChange = {
+                            if (it.length <= 4) enteredPin = it
+                            pinError = false
+                        },
+                        label = { Text("PIN / Password") },
+                        isError = pinError,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        singleLine = true
+                    )
+                    if (pinError) {
+                        Text(
+                            text = "Incorrect PIN. Try again.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        // Validate entered PIN against target profile PIN
+                        if (enteredPin == targetProfile.password) {
+                            viewModel.switchTo(targetProfile.id)
+                            pendingProfile = null
+                            onContinue()
+                        } else {
+                            pinError = true
+                        }
+                    }
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pendingProfile = null
+                        enteredPin = ""
+                        pinError = false
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 }
@@ -162,7 +252,7 @@ private fun SwitchProfilesDialog(
                     }
                     Spacer(Modifier.width(12.dp))
                     Text(
-                        "${p.nickname} - ${p.role.label}",
+                        "${p.nickname} (${p.role.label})",
                         color = Ink,
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontWeight = if (p.id == currentId) FontWeight.Bold else FontWeight.Medium,
