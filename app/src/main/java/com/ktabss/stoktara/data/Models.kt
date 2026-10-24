@@ -46,6 +46,14 @@ data class NewItem(
     val photoUri: String? = null,
 )
 
+data class ItemFormErrors(
+    val name: String? = null,
+    val unit: String? = null,
+    val quantity: String? = null,
+    val threshold: String? = null,
+    val sku: String? = null
+)
+
 enum class AuditAction(val label: String) {
     ITEM_CREATED("Item Created"),
     STOCK_IN("Stock In"),
