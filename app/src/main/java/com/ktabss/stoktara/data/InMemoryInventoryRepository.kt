@@ -40,6 +40,57 @@ class InMemoryInventoryRepository : InventoryRepository {
         _profiles.value.firstOrNull { it.id == profileId }?.let { _currentProfile.value = it }
     }
 
+    override fun setBusinessName(name: String) {
+        _businessName.value = name
+    }
+
+    override fun createOwnerProfile(name: String, pin: String): Profile {
+        val newOwner = Profile(
+            id = System.currentTimeMillis(),
+            nickname = name,
+            role = Role.OWNER,
+            password = pin
+        )
+        _profiles.update { it + newOwner }
+        _currentProfile.value = newOwner
+        return newOwner
+    }
+
+    override fun updateProfile(id: Long, newNickname: String, newPin: String) {
+        _profiles.update { list ->
+            list.map { profile ->
+                if (profile.id == id) {
+                    profile.copy(nickname = newNickname, password = newPin)
+                } else profile
+            }
+        }
+        if (_currentProfile.value.id == id) {
+            _currentProfile.value = _currentProfile.value.copy(nickname = newNickname, password = newPin)
+        }
+    }
+
+    override fun createStaffProfile(name: String, pin: String): Profile {
+        val newStaff = Profile(
+            id = System.currentTimeMillis(),
+            nickname = name,
+            role = Role.STAFF,
+            password = pin
+        )
+        _profiles.update { it + newStaff }
+        return newStaff
+    }
+
+    override fun addCategoryTag(label: String): CategoryTag {
+        val nextId = (_categories.value.maxOfOrNull { it.id } ?: 0L) + 1
+        val newTag = CategoryTag(id = nextId, label = label)
+        _categories.update { it + newTag }
+        return newTag
+    }
+
+    override fun deleteCategoryTag(id: Long) {
+        _categories.update { list -> list.filterNot { it.id == id } }
+    }
+
     override fun findItem(id: Long): Item? = _items.value.firstOrNull { it.id == id }
 
     override fun findItemBySku(sku: String): Item? =
