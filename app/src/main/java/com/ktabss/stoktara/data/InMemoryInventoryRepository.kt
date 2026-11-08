@@ -10,8 +10,8 @@ class InMemoryInventoryRepository : InventoryRepository {
     private val nextItemId = AtomicLong(1)
     private val nextLogId = AtomicLong(1)
 
-    private val nena = Profile(1, "Nena", Role.OWNER)
-    private val jun = Profile(2, "Jun", Role.STAFF)
+    private val nena = Profile(1, "Nena", Role.OWNER, password ="1234")
+    private val jun = Profile(2, "Jun", Role.STAFF, password ="5678")
 
     private val _businessName = MutableStateFlow("Nena\u2019s Bakery & Supplies")
     private val _currentProfile = MutableStateFlow(nena)
